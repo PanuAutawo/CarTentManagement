@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/PanuAutawo/CarTentManagement/backend/entity"
 	"github.com/gin-gonic/gin"
@@ -17,56 +18,88 @@ func NewCarController(db *gorm.DB) *CarController {
 	return &CarController{DB: db}
 }
 
-// Response struct สำหรับทั้ง GetAllCars และ GetCarByID
-type RentPeriod struct {
-	RentPrice     float64 `json:"rent_price"`
-	RentStartDate string  `json:"rent_start_date"`
-	RentEndDate   string  `json:"rent_end_date"`
-}
-
-type CarResponse struct {
-	entity.Car
-	SaleList []struct {
-		SalePrice float64 `json:"sale_price"`
-	} `json:"sale_list,omitempty"`
-	RentList []RentPeriod `json:"rent_list,omitempty"`
-}
-
 // GET /cars
 func (cc *CarController) GetAllCars(c *gin.Context) {
 	var cars []entity.Car
-	if err := cc.DB.Preload("Detail.Brand").
+
+	// Pagination
+	page := c.DefaultQuery("page", "1")
+	limit := c.DefaultQuery("limit", "20")
+	pageInt, _ := strconv.Atoi(page)
+	limitInt, _ := strconv.Atoi(limit)
+	offset := (pageInt - 1) * limitInt
+
+	// Search by car name (optional)
+	search := c.Query("search")
+
+	// Build query
+	query := cc.DB.Preload("Detail.Brand").
 		Preload("Detail.CarModel").
 		Preload("Detail.SubModel").
 		Preload("Pictures").
 		Preload("Province").
 		Preload("Employee").
 		Preload("SaleList").
-		Preload("RentList.RentAbleDates.DateforRent").
-		Find(&cars).Error; err != nil {
+		Preload("RentList.RentAbleDates.DateforRent")
+
+	if search != "" {
+		query = query.Where("car_name LIKE ?", "%"+search+"%")
+	}
+
+	// Execute query with pagination
+	if err := query.Limit(limitInt).Offset(offset).Find(&cars).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	var resp []CarResponse
+	// Map cars to CarResponse
+	var resp []entity.CarResponse
 	for _, car := range cars {
-		cr := CarResponse{Car: car}
+		// แปลง Pictures
+		var picturesResp []entity.CarPictureResponse
+		for _, pic := range car.Pictures {
+			picturesResp = append(picturesResp, entity.CarPictureResponse{
+				ID:    pic.ID,
+				Title: pic.Title,
+				Path:  pic.Path,
+			})
+		}
+
+		// Map CarResponse
+		cr := entity.CarResponse{
+			ID:              car.ID,
+			CarName:         car.CarName,
+			YearManufacture: car.YearManufacture,
+			Color:           car.Color,
+			Mileage:         car.Mileage,
+			Condition:       car.Condition,
+			PurchasePrice:   car.PurchasePrice, // <-- เพิ่มตรงนี้
+			Detail: entity.CarDetail{
+				Brand:    car.Detail.Brand.BrandName,
+				CarModel: car.Detail.CarModel.ModelName,
+				SubModel: car.Detail.SubModel.SubModelName,
+			},
+			Pictures: picturesResp,
+		}
 
 		// SaleList
 		for _, s := range car.SaleList {
-			cr.SaleList = append(cr.SaleList, struct {
-				SalePrice float64 `json:"sale_price"`
-			}{SalePrice: s.SalePrice})
+			cr.SaleList = append(cr.SaleList, entity.SaleEntry{
+				SalePrice: s.SalePrice,
+				Status:    s.Status,
+			})
 		}
 
-		// RentList (หลายช่วง)
+		// RentList
 		for _, r := range car.RentList {
 			for _, rd := range r.RentAbleDates {
 				if rd.DateforRent != nil {
-					cr.RentList = append(cr.RentList, RentPeriod{
+					cr.RentList = append(cr.RentList, entity.RentPeriod{
+						ID:            rd.DateforRent.ID,
 						RentPrice:     rd.DateforRent.RentPrice,
 						RentStartDate: rd.DateforRent.OpenDate.Format("2006-01-02"),
 						RentEndDate:   rd.DateforRent.CloseDate.Format("2006-01-02"),
+						Status:        rd.DateforRent.Status,
 					})
 				}
 			}
@@ -75,9 +108,14 @@ func (cc *CarController) GetAllCars(c *gin.Context) {
 		resp = append(resp, cr)
 	}
 
-	c.JSON(http.StatusOK, resp)
+	c.JSON(http.StatusOK, gin.H{
+		"page":  pageInt,
+		"limit": limitInt,
+		"data":  resp,
+	})
 }
 
+// GET /cars/:id
 func (cc *CarController) GetCarByID(c *gin.Context) {
 	id := c.Param("id")
 	var car entity.Car
@@ -99,20 +137,38 @@ func (cc *CarController) GetCarByID(c *gin.Context) {
 		return
 	}
 
-	// ✅ map ข้อมูลเข้า CarResponse
+	// แปลง Pictures
+	var picturesResp []entity.CarPictureResponse
+	for _, pic := range car.Pictures {
+		picturesResp = append(picturesResp, entity.CarPictureResponse{
+			ID:    pic.ID,
+			Title: pic.Title,
+			Path:  pic.Path,
+		})
+	}
+
+	// Map CarResponse
 	cr := entity.CarResponse{
 		ID:              car.ID,
 		CarName:         car.CarName,
 		YearManufacture: car.YearManufacture,
 		Color:           car.Color,
+		PurchasePrice:   car.PurchasePrice,
 		Mileage:         car.Mileage,
 		Condition:       car.Condition,
+		Detail: entity.CarDetail{
+			Brand:    car.Detail.Brand.BrandName,
+			CarModel: car.Detail.CarModel.ModelName,
+			SubModel: car.Detail.SubModel.SubModelName,
+		},
+		Pictures: picturesResp,
 	}
 
 	// SaleList
 	for _, s := range car.SaleList {
 		cr.SaleList = append(cr.SaleList, entity.SaleEntry{
 			SalePrice: s.SalePrice,
+			Status:    s.Status,
 		})
 	}
 
@@ -125,6 +181,7 @@ func (cc *CarController) GetCarByID(c *gin.Context) {
 					RentPrice:     rd.DateforRent.RentPrice,
 					RentStartDate: rd.DateforRent.OpenDate.Format("2006-01-02"),
 					RentEndDate:   rd.DateforRent.CloseDate.Format("2006-01-02"),
+					Status:        rd.DateforRent.Status,
 				})
 			}
 		}

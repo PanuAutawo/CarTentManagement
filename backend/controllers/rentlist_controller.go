@@ -18,38 +18,84 @@ func NewRentListController(db *gorm.DB) *RentListController {
 	return &RentListController{DB: db}
 }
 
-// GET /rentlists/:carId
 func (rc *RentListController) GetRentListsByCar(c *gin.Context) {
 	carId := c.Param("carId")
 
-	// ดึงข้อมูลรถก่อน
+	// ✅ preload ความสัมพันธ์ทั้งหมดที่จำเป็น
 	var car entity.Car
-	if err := rc.DB.Preload("Pictures").
+	if err := rc.DB.
+		Preload("Pictures").
+		Preload("Province").
+		Preload("Employee").
+		Preload("Detail.SubModel.CarModel.Brand").
+		Preload("SaleList").
+		Preload("RentList.RentAbleDates.DateforRent").
 		First(&car, carId).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Car not found"})
 		return
 	}
 
-	// ดึง rent list ของรถ (ถ้ามี)
-	var rentList entity.RentList
-	err := rc.DB.Preload("RentAbleDates.DateforRent").
-		Where("car_id = ?", carId).
-		First(&rentList).Error
+	// ✅ map Detail
+	detail := entity.CarDetail{}
+	if car.Detail != nil &&
+		car.Detail.SubModel != nil &&
+		car.Detail.SubModel.CarModel != nil &&
+		car.Detail.SubModel.CarModel.Brand != nil {
 
-	rentPeriods := []entity.RentPeriod{}
-	if err == nil {
-		for _, rad := range rentList.RentAbleDates {
-			date := rad.DateforRent
-			rentPeriods = append(rentPeriods, entity.RentPeriod{
-				ID:            date.ID,
-				RentPrice:     date.RentPrice,
-				RentStartDate: date.OpenDate.Format("2006-01-02"),
-				RentEndDate:   date.CloseDate.Format("2006-01-02"),
-			})
+		detail = entity.CarDetail{
+			Brand:    car.Detail.SubModel.CarModel.Brand.BrandName,
+			CarModel: car.Detail.SubModel.CarModel.ModelName,
+			SubModel: car.Detail.SubModel.SubModelName,
 		}
 	}
 
-	// สร้าง response
+	// ✅ map SaleList
+	var saleList []entity.SaleEntry
+	for _, s := range car.SaleList {
+		saleList = append(saleList, entity.SaleEntry{
+			SalePrice: s.SalePrice,
+			Status:    s.Status,
+		})
+	}
+
+	// ✅ map RentList
+	var rentPeriods []entity.RentPeriod
+	for _, rl := range car.RentList {
+		for _, rad := range rl.RentAbleDates {
+			if rad.DateforRent != nil {
+				rentPeriods = append(rentPeriods, entity.RentPeriod{
+					ID:            rad.DateforRent.ID,
+					RentPrice:     rad.DateforRent.RentPrice,
+					RentStartDate: rad.DateforRent.OpenDate.Format("2006-01-02"),
+					RentEndDate:   rad.DateforRent.CloseDate.Format("2006-01-02"),
+					Status:        rad.DateforRent.Status,
+				})
+			}
+		}
+	}
+
+	// ✅ map Pictures
+	var pictures []entity.CarPictureResponse
+	for _, p := range car.Pictures {
+		pictures = append(pictures, entity.CarPictureResponse{
+			ID:    p.ID,
+			Title: p.Title,
+			Path:  p.Path,
+		})
+	}
+
+	// ✅ Province, Employee แค่ id
+	var province *entity.ProvinceResponse
+	if car.Province != nil {
+		province = &entity.ProvinceResponse{ID: car.Province.ID}
+	}
+
+	var employee *entity.EmployeeResponse
+	if car.Employee != nil {
+		employee = &entity.EmployeeResponse{ID: car.Employee.ID}
+	}
+
+	// ✅ response
 	response := entity.CarResponse{
 		ID:              car.ID,
 		CarName:         car.CarName,
@@ -57,9 +103,12 @@ func (rc *RentListController) GetRentListsByCar(c *gin.Context) {
 		Color:           car.Color,
 		Mileage:         car.Mileage,
 		Condition:       car.Condition,
-		SaleList:        nil,         // ถ้ามีสามารถ preload
-		RentList:        rentPeriods, // array ว่างได้
-		Pictures:        car.Pictures,
+		Detail:          detail,
+		SaleList:        saleList,
+		RentList:        rentPeriods,
+		Pictures:        pictures,
+		Province:        province,
+		Employee:        employee,
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -93,13 +142,13 @@ func (rc *RentListController) CreateOrUpdateRentList(c *gin.Context) {
 
 	if err == gorm.ErrRecordNotFound {
 		rentList = entity.RentList{
-			CarID:     input.CarID,
-			Status:    input.Status,
+			CarID: input.CarID,
+
 			ManagerID: input.ManagerID,
 		}
 		rc.DB.Create(&rentList)
 	} else {
-		rentList.Status = input.Status
+
 		rc.DB.Save(&rentList)
 	}
 
@@ -155,4 +204,71 @@ func (rc *RentListController) DeleteRentDate(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Date deleted"})
+}
+
+// POST /rentcontracts
+func (rc *RentListController) CreateRentContract(c *gin.Context) {
+	type Input struct {
+		RentListID uint    `json:"rent_list_id"`
+		CustomerID uint    `json:"customer_id"`
+		EmployeeID uint    `json:"employee_id"`
+		PriceAgree float64 `json:"price_agree"`
+		DateStart  string  `json:"date_start"`
+		DateEnd    string  `json:"date_end"`
+	}
+
+	var input Input
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	start, err1 := time.Parse("2006-01-02", input.DateStart)
+	end, err2 := time.Parse("2006-01-02", input.DateEnd)
+	if err1 != nil || err2 != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid date format"})
+		return
+	}
+
+	// ✅ ตรวจสอบว่ามี RentContract ทับกันหรือไม่
+	var count int64
+	rc.DB.Model(&entity.RentContract{}).
+		Where("rent_list_id = ? AND (date_start <= ? AND date_end >= ?)", input.RentListID, end, start).
+		Count(&count)
+
+	if count > 0 {
+		c.JSON(http.StatusConflict, gin.H{"error": "ช่วงเวลานี้ถูกเช่าแล้ว"})
+		return
+	}
+
+	// ✅ สร้าง RentContract ใหม่
+	rentContract := entity.RentContract{
+		RentListID: input.RentListID,
+		CustomerID: input.CustomerID,
+		EmployeeID: input.EmployeeID,
+		PriceAgree: input.PriceAgree,
+		DateStart:  start,
+		DateEnd:    end,
+	}
+
+	if err := rc.DB.Create(&rentContract).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// ✅ อัพเดตสถานะ DateforRent ที่เกี่ยวข้อง
+	var dates []entity.RentAbleDate
+	rc.DB.Preload("DateforRent").
+		Where("rent_list_id = ?", input.RentListID).
+		Find(&dates)
+
+	for _, d := range dates {
+		if (d.DateforRent.OpenDate.Before(end) && d.DateforRent.CloseDate.After(start)) ||
+			(d.DateforRent.OpenDate.Equal(start) || d.DateforRent.CloseDate.Equal(end)) {
+			d.DateforRent.Status = "rented"
+			rc.DB.Save(&d.DateforRent)
+		}
+	}
+
+	c.JSON(http.StatusOK, rentContract)
 }
