@@ -9,6 +9,7 @@ type RentList struct {
 
 	CarID uint `json:"car_id"`
 	Car   *Car `gorm:"foreignKey:CarID" json:"car"`
+	Status string "json:"status"
 
 	ManagerID     uint            `json:"manager_id"`
 	Manager       *Manager        `gorm:"foreignKey:ManagerID" json:"manager"`
