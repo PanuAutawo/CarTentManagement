@@ -1,14 +1,11 @@
-// backend/controllers/manager_controller.go
 package controllers
 
 import (
 	"net/http"
-	"time"
 
-	"github.com/PanuAutawo/CarTentManagement/backend/configs"
 	"github.com/PanuAutawo/CarTentManagement/backend/entity"
+	"github.com/PanuAutawo/CarTentManagement/backend/middleware"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -26,17 +23,7 @@ type LoginManagerInput struct {
 	Password string `json:"password" binding:"required"`
 }
 
-// ManagerLogin godoc
-// @Summary Login for managers
-// @Description Authenticates a manager and returns a JWT token
-// @Tags Authentication
-// @Accept json
-// @Produce json
-// @Param manager_credentials body LoginManagerInput true "Manager login credentials"
-// @Success 200 {object} gin.H
-// @Failure 400 {object} gin.H
-// @Failure 401 {object} gin.H
-// @Router /manager/login [post]
+// LoginManager godoc
 func (ctrl *ManagerController) LoginManager(c *gin.Context) {
 	var input LoginManagerInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -55,14 +42,7 @@ func (ctrl *ManagerController) LoginManager(c *gin.Context) {
 		return
 	}
 
-	// Sign a token with Manager role
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id":   manager.ID,
-		"role": "manager",
-		"exp":  time.Now().Add(time.Hour * 24).Unix(),
-	})
-
-	tokenString, err := token.SignedString([]byte(configs.SECRET_KEY))
+	tokenString, err := middleware.GenerateToken(manager.ID, "manager")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create token"})
 		return

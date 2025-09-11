@@ -20,7 +20,7 @@ const LeaveRequestForm: React.FC<Props> = ({ onSubmit, onCancel, showNotificatio
       return;
     }
 
-    if (endDate < startDate) {
+    if (new Date(endDate) < new Date(startDate)) {
       showNotification({ type: "error", message: "วันสิ้นสุดต้องไม่น้อยกว่าวันเริ่ม" });
       return;
     }

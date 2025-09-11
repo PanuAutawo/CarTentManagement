@@ -23,6 +23,7 @@ func InsertMockInspections(db *gorm.DB) {
 		Email:    "somying.jj@example.com",
 		Password: string(hashedPassword), // ในระบบจริงควรเข้ารหัสผ่าน
 		Phone:      "0887654321",
+		Birthday:	"2025-01-15",
 	}
 	// ตรวจสอบว่ามีลูกค้านี้หรือยัง ถ้าไม่มีให้สร้าง
 	db.Where(entity.Customer{Email: customer.Email}).FirstOrCreate(&customer)

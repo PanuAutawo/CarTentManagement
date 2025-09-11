@@ -44,7 +44,7 @@ func InsertMockSaleList(db *gorm.DB) {
 		limit = len(cars)
 	}
 
-	for i := 11; i < limit; i++ {
+	for i := 0; i < limit; i++ {
 		car := cars[i]
 
 		// สุ่มราคาขายจากต้นทุน
@@ -64,7 +64,7 @@ func InsertMockSaleList(db *gorm.DB) {
 			CarID:      car.ID,
 			Status:     status,
 			ManagerID:  manager.ID,
-			EmployeeID: emp.ID,
+			EmployeeID: emp.EmployeeID,
 		}
 
 		db.Create(&sale)

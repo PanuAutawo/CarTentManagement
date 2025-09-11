@@ -1,7 +1,8 @@
+// src/interface/Customer.ts
 import type dayjs from "dayjs";
 
 export interface Customer {
-    ID: string;
+    ID: number; // เปลี่ยนจาก string เป็น number
     FirstName: string;
     LastName: string;
     Password: string;
@@ -9,4 +10,3 @@ export interface Customer {
     Phone: string;
     Birthday: dayjs.Dayjs;
 }
-

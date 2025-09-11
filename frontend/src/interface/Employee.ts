@@ -1,8 +1,6 @@
-// 1. แก้ไขค่าใน Type 'Sex' ให้เป็นตัวพิมพ์เล็กทั้งหมด
-export type Sex = 'male' | 'female' | 'other';
-
+// src/interface/Employee.ts
 export interface Employee {
-  id: number;
+  ID: number; // เปลี่ยนจาก id เป็น ID
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -16,10 +14,12 @@ export interface Employee {
   address: string;
   startDate: string;
   
-  // 2. ตอนนี้ Type 'sex' จะใช้ค่าที่เป็นตัวพิมพ์เล็กตามที่แก้ไขด้านบน
   sex: Sex;
 
   position: string;
   jobType: string;
   totalSales: number;
 }
+
+// แก้ไขค่าใน Type 'Sex' ให้เป็นตัวพิมพ์เล็กทั้งหมด
+export type Sex = 'male' | 'female' | 'other';

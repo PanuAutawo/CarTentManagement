@@ -9,7 +9,6 @@ import (
 	"github.com/PanuAutawo/CarTentManagement/backend/middleware"
 	"github.com/PanuAutawo/CarTentManagement/backend/setupdata"
 	"github.com/gin-contrib/cors"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -53,7 +52,7 @@ func main() {
 	customerController := controllers.NewCustomerController(configs.DB)
 	managerController := controllers.NewManagerController(configs.DB)
 	typeInformationController := controllers.NewTypeInformationController(configs.DB)
-	rentListController := controllers.NewRentListController(configs.DB)
+	leaveController := controllers.NewLeaveController(configs.DB) // ✅ เพิ่ม LeaveController
 
 	// --- Routes ---
 
@@ -70,6 +69,7 @@ func main() {
 		carRoutes.GET("/:id", carController.GetCarByID) // GET /cars/:id
 	}
 	r.Static("/images/cars", "./public/images/cars")
+
 	// Address Routes
 	provinceRoutes := r.Group("/provinces")
 	{
@@ -136,15 +136,31 @@ func main() {
 		pickupDeliveryRoutes.DELETE("/:id", pickupDeliveryController.DeletePickupDelivery)
 	}
 
-	// Public Employee Routes (for admin or other uses)
+	// Public Employee Routes
 	employeePublicRoutes := r.Group("/employees")
 	{
 		employeePublicRoutes.GET("", employeeController.GetEmployees)
 		employeePublicRoutes.GET("/:id", employeeController.GetEmployeeByID)
 	}
 
-	// Admin-Only Routes
+	// ✅ New API Group (สำหรับ Manager + Leaves)
+	api := r.Group("/api")
+	{
+		// Leave Routes
+		api.GET("/leaves", leaveController.ListLeaves)
+		api.GET("/employees/:id/leaves", leaveController.ListLeavesByEmployee)
+		api.POST("/leaves", leaveController.CreateLeave)
+		api.PUT("/leaves/:id/status", leaveController.UpdateLeaveStatus)
 
+		// Employee CRUD (Manager)
+		api.GET("/employees", employeeController.GetEmployees)
+		api.GET("/employees/:id", employeeController.GetEmployeeByID)
+		api.POST("/employees", employeeController.CreateEmployee)
+		api.PUT("/employees/:id", employeeController.UpdateEmployeeByID)
+		api.DELETE("/employees/:id", employeeController.DeleteEmployeeByID)
+	}
+
+	// Admin-Only Routes
 	adminCustomerRoutes := r.Group("/admin/customers")
 	{
 		adminCustomerRoutes.GET("/:id", customerController.GetCustomerByID)

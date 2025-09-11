@@ -33,7 +33,7 @@ const LeaveHistory: React.FC<Props> = ({ leaves }) => {
             {leaves.map((leave) => {
               const status = getStatusLabel(leave.status);
               return (
-                <tr key={leave.LeaveID}>
+                <tr key={leave.leaveID}>
                   <td>{leave.startDate}</td>
                   <td>{leave.endDate}</td>
                   <td>{leave.type}</td>

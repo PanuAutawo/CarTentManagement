@@ -1,32 +1,26 @@
 package entity
 
-import (
-	"time"
-
-	"gorm.io/gorm"
-)
+import "time"
 
 type Employee struct {
-	gorm.Model
-
-	ProfileImage string    `json:"profile_image"`
-	FirstName    string    `json:"first_name"`
-	LastName     string    `json:"last_name"`
-	Password     string    `json:"password"`
+	EmployeeID   uint      `json:"employeeID" gorm:"primaryKey;autoIncrement"`
+	ProfileImage string    `json:"profileImage"`
+	FirstName    string    `json:"firstName"`
+	LastName     string    `json:"lastName"`
+	Password     string    `json:"-"` // ไม่ส่งออกไป frontend
 	Email        string    `json:"email" gorm:"uniqueIndex"`
-	PhoneNumber  string    `json:"phone_number"`
+	Phone        string    `json:"phone"`
 	Address      string    `json:"address"`
 	Birthday     time.Time `json:"birthday"`
 	Sex          string    `json:"sex"`
 	Position     string    `json:"position"`
-	JobType      time.Time `json:"job_type"` // แก้เป็น string
+	JobType      string    `json:"jobType"`
+	TotalSales   string    `json:"totalSales"`
 
-	TotalSales Status `json:"total_sales" gorm:"-"` // ไม่ map ลง DB
-
-	PickupDelivery []PickupDelivery `gorm:"foreignKey:EmployeeID" json:"pickup_deliveries"`
-	Cars           []Car            `gorm:"foreignKey:EmployeeID" json:"cars"`
-
-	SaleList      []SaleList      `gorm:"foreignKey:EmployeeID" json:"sale_list"`
-	SalesContract []SalesContract `gorm:"foreignKey:EmployeeID" json:"sales_contracts"`
-	LeaveRequest  []LeaveRequest  `gorm:"foreignKey:EmployeeID" json:"leave_requests"`
+	// ❌ ไม่เก็บใน DB แต่ส่งไป frontend ได้
+	LeaveRequests  []LeaveRequest   `json:"leaves" gorm:"-"`
+	PickupDelivery []PickupDelivery `gorm:"foreignKey:EmployeeID"`
+	Car            []Car            `gorm:"foreignKey:EmployeeID"`
+	SaleList       []SaleList       `gorm:"foreignKey:EmployeeID"`
+	SalesContract  []SalesContract  `gorm:"foreignKey:EmployeeID"`
 }

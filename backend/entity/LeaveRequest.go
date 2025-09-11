@@ -1,19 +1,14 @@
 package entity
 
-import (
-	"time"
-
-	"gorm.io/gorm"
-)
+import "gorm.io/gorm"
 
 type LeaveRequest struct {
 	gorm.Model
-
-	StartDate time.Time `json:"stardate"`
-	EndDate   time.Time `json:"enddate"`
-	Reason    string    `json:"reason"`
-	Status    string    `json:"status"`
-
+	LeaveID    string    `json:"leaveID" gorm:"uniqueIndex"`
+	StartDate  string    `json:"startDate"`
+	EndDate    string    `json:"endDate"`
+	Type       string    `json:"type"`
+	Status     string    `json:"status"`
 	EmployeeID uint      `json:"employeeID"`
-	Employee   *Employee `gorm:"foreignKey:EmployeeID" json:"employee"`
+	Employee   *Employee `json:"employee,omitempty" gorm:"foreignKey:EmployeeID;references:EmployeeID"`
 }

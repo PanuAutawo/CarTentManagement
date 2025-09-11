@@ -169,7 +169,7 @@ const InspectionCarPage: React.FC = () => {
             case 'กำลังดำเนินการ':
             case 'รอตรวจสอบ':
                 return <LoadingOutlined style={{ color: '#1890ff' }} />;
-            case 'สำเร็จ':
+            case 'เสร็จสิ้น':
                 return <CheckCircleOutlined style={{ color: '#52c41a' }} />;
             case 'ยกเลิก':
                 return <CloseCircleOutlined style={{ color: '#ff4d4f' }} />;
@@ -192,7 +192,7 @@ const InspectionCarPage: React.FC = () => {
             components: {
                 Select: {
                     colorBgContainer: colors.grayLight,
-                    colorText: colors.white,
+                    colorText: colors.gold,
                     colorBorder: colors.gold,
                     colorBgElevated: colors.gray,
                     optionSelectedBg: colors.gold,
@@ -211,7 +211,7 @@ const InspectionCarPage: React.FC = () => {
                     color: white !important;
                 }
                 .ant-select-item-option-content {
-                    color: white;
+                    color: blsck;
                 }
                 .ant-select-item-option-selected .ant-select-item-option-content {
                     color: black;
@@ -227,10 +227,11 @@ const InspectionCarPage: React.FC = () => {
                             defaultValue="ทั้งหมด"
                             style={{ width: 120 }}
                             onChange={value => setStatusFilter(value)}
+                            dropdownStyle={{ backgroundColor: '#424242' }}
                         >
                             <Option value="ทั้งหมด">ทั้งหมด</Option>
                             <Option value="กำลังดำเนินการ">กำลังดำเนินการ</Option>
-                            <Option value="สำเร็จ">สำเร็จ</Option>
+                            <Option value="เสร็จสิ้น">เสร็จสิ้น</Option>
                             <Option value="ยกเลิก">ยกเลิก</Option>
                         </Select>
                         <Button onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}>
@@ -278,12 +279,12 @@ const InspectionCarPage: React.FC = () => {
                                             </Text>
                                         </Space>
                                         <Space style={{ marginTop: '20px' }}>
-                                            {booking.inspection_status !== 'ยกเลิก' && booking.inspection_status !== 'สำเร็จ' && (
+                                            {booking.inspection_status !== 'ยกเลิก' && booking.inspection_status !== 'เสร็จสิ้น' && (
                                                 <Button icon={<EditOutlined />} onClick={() => handleEditBooking(booking.ID)} style={{ background: '#5e5e5e', color: 'white', borderColor: '#777' }}>
                                                     แก้ไข
                                                 </Button>
                                             )}
-                                            {booking.inspection_status !== 'ยกเลิก' && booking.inspection_status !== 'สำเร็จ' && (
+                                            {booking.inspection_status !== 'ยกเลิก' && booking.inspection_status !== 'เสร็จสิ้น' && (
                                                 <Button icon={<CloseCircleOutlined />} danger onClick={() => handleCancelBooking(booking)}>
                                                     ยกเลิก
                                                 </Button>

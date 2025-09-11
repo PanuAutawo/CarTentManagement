@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
     Button, Card, Row, Col, Space, Modal,
-    Typography, Divider, message, Empty, Select,
+    Typography, Divider, message, Empty, Select, ConfigProvider,
     Spin
 } from 'antd';
 import { useNavigate } from 'react-router-dom';
+import thTH from 'antd/locale/th_TH';
 import {
     PlusCircleOutlined, EditOutlined, CalendarOutlined,
     ClockCircleOutlined, UserOutlined, EnvironmentOutlined, CloseCircleOutlined,
@@ -22,6 +23,15 @@ dayjs.extend(utc);
 
 const { Title, Text } = Typography;
 const { Option } = Select;
+
+const colors = {
+    gold: '#d4af37',
+    goldDark: '#b38e2f',
+    black: '#121212',
+    white: '#ffffff',
+    gray: '#1e1e1e',
+    grayLight: '#424242',
+};
 
 interface PickupBooking {
     ID: number;
@@ -68,7 +78,7 @@ const PickupCarPage: React.FC = () => {
             message.error('กรุณาเข้าสู่ระบบเพื่อดูประวัติการนัดหมาย');
             return;
         }
-    
+
         setLoading(true);
         try {
             const response = await fetch(`http://localhost:8080/pickup-deliveries/customer/${user.ID}`, {
@@ -183,116 +193,136 @@ const PickupCarPage: React.FC = () => {
     }
 
     return (
-        
-        <div style={{ padding: '24px 48px' }}>
-             <style>{`
-                .ant-select-selector, .ant-select-dropdown {
-                    color: white !important;
+        <ConfigProvider locale={thTH} theme={{
+            components: {
+                Select: {
+                    colorBgContainer: colors.grayLight,
+                    colorText: colors.gold,
+                    colorBorder: colors.gold,
+                    colorBgElevated: colors.gray,
+                    optionSelectedBg: colors.gold,
+                    optionSelectedColor: colors.black,
+                    optionActiveBg: 'rgba(212, 175, 55, 0.2)',
+                },
+                Button: {
+                    defaultBg: colors.grayLight,
+                    defaultColor: colors.white,
+                    defaultBorderColor: '#555',
                 }
-                .ant-select-item-option-content {
-                    color: white;
-                }
-                .ant-select-item-option-selected .ant-select-item-option-content {
-                    color: black;
-                }
-            `}</style>
-            <Title level={2} style={{ color: 'white' }}>ประวัติการนัดรับ-ส่งรถยนต์</Title>
-            <Divider style={{ borderColor: '#424242' }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <Space>
-                    <Text style={{ color: 'white' }}>สถานะ:</Text>
-                    <Select
-                        defaultValue="ทั้งหมด"
-                        style={{ width: 120, backgroundColor: '#424242', color: 'white' }}
-                        onChange={value => setStatusFilter(value)}
-                        dropdownStyle={{ backgroundColor: '#424242' }}
-                    >
-                        <Option value="ทั้งหมด" style={{ backgroundColor: '#424242', color: 'white' }}>ทั้งหมด</Option>
-                        <Option value="รอดำเนินการ" style={{ backgroundColor: '#424242', color: 'white' }}>รอดำเนินการ</Option>
-                        <Option value="สำเร็จ" style={{ backgroundColor: '#424242', color: 'white' }}>สำเร็จ</Option>
-                        <Option value="ยกเลิก" style={{ backgroundColor: '#424242', color: 'white' }}>ยกเลิก</Option>
-                    </Select>
-                    <Button onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')} style={{
-                        background: '#424242', color: 'white', borderColor: '#555'
-                    }}>
-                        เรียงตามวันที่ {sortOrder === 'asc' ? <SortAscendingOutlined /> : <SortDescendingOutlined />}
-                    </Button>
-                </Space>
-                <Button
-                    type="primary"
-                    style={{ background: 'linear-gradient(45deg, #FFD700, #FFA500)', color: 'black', border: 'none', fontWeight: 'bold' }}
-                    onClick={handleCreateNewBooking}
-                >
-                    <PlusCircleOutlined /> สร้างการนัดหมาย
-                </Button>
-            </div>
-            <div style={{ minHeight: 'calc(100vh - 280px)' }}>
-                {filteredAndSortedBookings.length > 0 ? (
-                    <Row gutter={[24, 24]}>
-                        {filteredAndSortedBookings.map(booking => (
-                            <Col xs={24} md={12} lg={8} key={booking.ID}>
-                                <Card
-                                    style={{
-                                        width: '100%', backgroundColor: '#363636', color: 'white', borderRadius: '12px',
-                                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)', marginBottom: '24px', border: '1px solid #f1d846ff'
-                                    }}
-                                    hoverable
-                                >
-                                    <Title level={4} style={{ color: '#f1d430ff', marginBottom: '16px' }}>
-                                        {`นัดรับ-ส่งรถยนต์ #${booking.ID}`}
-                                    </Title>
-                                    <Space direction="vertical" style={{ width: '100%' }}>
-                                        <Text style={{ color: 'white' }}>
-                                            <CalendarOutlined /> วันที่นัดหมาย: {dayjs(booking.DateTime).locale('th').format('DD MMMM BBBB')}
-                                        </Text>
-                                        {/* --- vvvvv --- ส่วนที่แก้ไข --- vvvvv --- */}
-                                        <Text style={{ color: 'white' }}>
-                                            {/* ✅ เอา .utc ออกเพื่อให้ dayjs แสดงเวลาตามโซนเวลาท้องถิ่น */}
-                                            <ClockCircleOutlined /> เวลา: {dayjs(booking.DateTime).format('HH:mm')} น.
-                                        </Text>
-                                        {/* --- ^^^^^ --- จบส่วนที่แก้ไข --- ^^^^^ --- */}
-                                        <Text style={{ color: 'white' }}>
-                                            <UserOutlined /> พนักงาน: {booking.Employee?.first_name} {booking.Employee?.last_name}
-                                        </Text>
-                                        <Text style={{ color: 'white' }}>
-                                            <EnvironmentOutlined /> สถานที่: {booking.Address} {booking.SubDistrict?.SubDistrictName} {booking.District?.DistrictName} {booking.Province?.ProvinceName}
-                                        </Text>
-                                        <Text style={{ color: 'white' }}>
-                                            สถานะ: {getStatusIcon(booking.status)} {booking.status}
-                                        </Text>
-                                    </Space>
-                                    <Space style={{ marginTop: '20px' }}>
-                                        {booking.status !== 'ยกเลิก' && booking.status !== 'สำเร็จ' && (
-                                            <Button icon={<EditOutlined />} onClick={() => handleEditBooking(booking.ID)} style={{ background: '#5e5e5e', color: 'white', borderColor: '#777' }}>
-                                                แก้ไข
-                                            </Button>
-                                        )}
-                                        {booking.status !== 'ยกเลิก' && booking.status !== 'สำเร็จ' && (
-                                            <Button icon={<CloseCircleOutlined />} danger onClick={() => handleCancelBooking(booking)}>
-                                                ยกเลิก
-                                            </Button>
-                                        )}
-                                    </Space>
-                                </Card>
-                            </Col>
-                        ))}
-                    </Row>
-                ) : (
-                    <div style={{ textAlign: 'center', marginTop: '100px' }}>
-                        <Empty description={<Text style={{ color: '#777' }}>{statusFilter === 'ทั้งหมด' ? 'ยังไม่มีประวัติการนัดหมาย' : 'ไม่พบรายการนัดหมายตามสถานะที่เลือก'}</Text>}>
-                            <Button type="primary" style={{ background: 'linear-gradient(45deg, #FFD700, #FFA500)', color: 'black', border: 'none', fontWeight: 'bold' }} onClick={handleCreateNewBooking}>สร้างการนัดหมายแรกของคุณ</Button>
-                        </Empty>
-                    </div>
-                )}
-            </div>
+            }
+        }}>
+            <style>{`
+                        .ant-select-selector, .ant-select-dropdown {
+                            color: white !important;
+                        }
+                        .ant-select-item-option-content {
+                            color: blsck;
+                        }
+                        .ant-select-item-option-selected .ant-select-item-option-content {
+                            color: black;
+                        }
+                    `}</style>
 
-            <Modal title="ยืนยันการยกเลิก" open={isModalOpen} onCancel={handleModalClose} footer={[
-                <Button key="back" onClick={handleModalClose}>กลับ</Button>,
-                <Button key="submit" type="primary" danger onClick={handleConfirmCancel}>ยืนยันการยกเลิก</Button>
-            ]}>
-                <p>คุณแน่ใจหรือไม่ว่าต้องการยกเลิกการนัดหมายนี้?</p>
-            </Modal>
-        </div>
+            <div style={{ padding: '24px 48px' }}>
+                
+                <Title level={2} style={{ color: 'white' }}>ประวัติการนัดรับ-ส่งรถยนต์</Title>
+                <Divider style={{ borderColor: '#424242' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <Space>
+                        <Text style={{ color: 'white' }}>สถานะ:</Text>
+                        <Select
+                            defaultValue="ทั้งหมด"
+                            style={{ width: 120}}
+                            onChange={value => setStatusFilter(value)}
+                            dropdownStyle={{ backgroundColor: '#424242' }}
+                        >
+                            <Option value="ทั้งหมด" >ทั้งหมด</Option>
+                            <Option value="รอดำเนินการ" >รอดำเนินการ</Option>
+                            <Option value="สำเร็จ">สำเร็จ</Option>
+                            <Option value="ยกเลิก">ยกเลิก</Option>
+                        </Select>
+                        <Button onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')} style={{
+                            background: '#424242', color: 'white', borderColor: '#555'
+                        }}>
+                            เรียงตามวันที่ {sortOrder === 'asc' ? <SortAscendingOutlined /> : <SortDescendingOutlined />}
+                        </Button>
+                    </Space>
+                    <Button
+                        type="primary"
+                        style={{ background: 'linear-gradient(45deg, #FFD700, #FFA500)', color: 'black', border: 'none', fontWeight: 'bold' }}
+                        onClick={handleCreateNewBooking}
+                    >
+                        <PlusCircleOutlined /> สร้างการนัดหมาย
+                    </Button>
+                </div>
+                <div style={{ minHeight: 'calc(100vh - 280px)' }}>
+                    {filteredAndSortedBookings.length > 0 ? (
+                        <Row gutter={[24, 24]}>
+                            {filteredAndSortedBookings.map(booking => (
+                                <Col xs={24} md={12} lg={8} key={booking.ID}>
+                                    <Card
+                                        style={{
+                                            width: '100%', backgroundColor: '#363636', color: 'white', borderRadius: '12px',
+                                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)', marginBottom: '24px', border: '1px solid #f1d846ff'
+                                        }}
+                                        hoverable
+                                    >
+                                        <Title level={4} style={{ color: '#f1d430ff', marginBottom: '16px' }}>
+                                            {`นัดรับ-ส่งรถยนต์ #${booking.ID}`}
+                                        </Title>
+                                        <Space direction="vertical" style={{ width: '100%' }}>
+                                            <Text style={{ color: 'white' }}>
+                                                <CalendarOutlined /> วันที่นัดหมาย: {dayjs(booking.DateTime).locale('th').format('DD MMMM BBBB')}
+                                            </Text>
+                                            {/* --- vvvvv --- ส่วนที่แก้ไข --- vvvvv --- */}
+                                            <Text style={{ color: 'white' }}>
+                                                {/* ✅ เอา .utc ออกเพื่อให้ dayjs แสดงเวลาตามโซนเวลาท้องถิ่น */}
+                                                <ClockCircleOutlined /> เวลา: {dayjs(booking.DateTime).format('HH:mm')} น.
+                                            </Text>
+                                            {/* --- ^^^^^ --- จบส่วนที่แก้ไข --- ^^^^^ --- */}
+                                            <Text style={{ color: 'white' }}>
+                                                <UserOutlined /> พนักงาน: {booking.Employee?.first_name} {booking.Employee?.last_name}
+                                            </Text>
+                                            <Text style={{ color: 'white' }}>
+                                                <EnvironmentOutlined /> สถานที่: {booking.Address} {booking.SubDistrict?.SubDistrictName} {booking.District?.DistrictName} {booking.Province?.ProvinceName}
+                                            </Text>
+                                            <Text style={{ color: 'white' }}>
+                                                สถานะ: {getStatusIcon(booking.status)} {booking.status}
+                                            </Text>
+                                        </Space>
+                                        <Space style={{ marginTop: '20px' }}>
+                                            {booking.status !== 'ยกเลิก' && booking.status !== 'สำเร็จ' && (
+                                                <Button icon={<EditOutlined />} onClick={() => handleEditBooking(booking.ID)} style={{ background: '#5e5e5e', color: 'white', borderColor: '#777' }}>
+                                                    แก้ไข
+                                                </Button>
+                                            )}
+                                            {booking.status !== 'ยกเลิก' && booking.status !== 'สำเร็จ' && (
+                                                <Button icon={<CloseCircleOutlined />} danger onClick={() => handleCancelBooking(booking)}>
+                                                    ยกเลิก
+                                                </Button>
+                                            )}
+                                        </Space>
+                                    </Card>
+                                </Col>
+                            ))}
+                        </Row>
+                    ) : (
+                        <div style={{ textAlign: 'center', marginTop: '100px' }}>
+                            <Empty description={<Text style={{ color: '#777' }}>{statusFilter === 'ทั้งหมด' ? 'ยังไม่มีประวัติการนัดหมาย' : 'ไม่พบรายการนัดหมายตามสถานะที่เลือก'}</Text>}>
+                                <Button type="primary" style={{ background: 'linear-gradient(45deg, #FFD700, #FFA500)', color: 'black', border: 'none', fontWeight: 'bold' }} onClick={handleCreateNewBooking}>สร้างการนัดหมายแรกของคุณ</Button>
+                            </Empty>
+                        </div>
+                    )}
+                </div>
+
+                <Modal title="ยืนยันการยกเลิก" open={isModalOpen} onCancel={handleModalClose} footer={[
+                    <Button key="back" onClick={handleModalClose}>กลับ</Button>,
+                    <Button key="submit" type="primary" danger onClick={handleConfirmCancel}>ยืนยันการยกเลิก</Button>
+                ]}>
+                    <p>คุณแน่ใจหรือไม่ว่าต้องการยกเลิกการนัดหมายนี้?</p>
+                </Modal>
+            </div>
+        </ConfigProvider>
     );
 };
 

@@ -1,4 +1,3 @@
-// backend/setupdata/employee.go
 package setupdata
 
 import (
@@ -11,7 +10,7 @@ import (
 )
 
 func InsertMockEmployees(db *gorm.DB) {
-	// Hash password
+	// สร้าง hash ใหม่เสมอ
 	hashedPassword1, _ := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.DefaultCost)
 	hashedPassword2, _ := bcrypt.GenerateFromPassword([]byte("abcdef"), bcrypt.DefaultCost)
 
@@ -22,12 +21,12 @@ func InsertMockEmployees(db *gorm.DB) {
 			LastName:     "Sukjai",
 			Password:     string(hashedPassword1),
 			Email:        "somchai@example.com",
-			PhoneNumber:  "0812345678",
+			Phone:        "0812345678",
 			Address:      "Bangkok, Thailand",
 			Birthday:     time.Date(1990, 5, 10, 0, 0, 0, 0, time.UTC),
 			Sex:          "Male",
 			Position:     "Sales",
-			JobType:      time.Now(),
+			JobType:      "full-time",
 		},
 		{
 			ProfileImage: "employee2.jpg",
@@ -35,17 +34,19 @@ func InsertMockEmployees(db *gorm.DB) {
 			LastName:     "Thongdee",
 			Password:     string(hashedPassword2),
 			Email:        "suda@example.com",
-			PhoneNumber:  "0899998888",
+			Phone:        "0899998888",
 			Address:      "Chiang Mai, Thailand",
 			Birthday:     time.Date(1995, 11, 20, 0, 0, 0, 0, time.UTC),
 			Sex:          "Female",
 			Position:     "Programmer",
-			JobType:      time.Now(),
+			JobType:      "full-time",
 		},
 	}
 
 	for _, e := range employees {
+		// จะสร้างเฉพาะถ้าไม่เจอ email นี้
 		db.FirstOrCreate(&e, entity.Employee{Email: e.Email})
 	}
+
 	fmt.Println("Inserted mock Employees successfully!")
 }

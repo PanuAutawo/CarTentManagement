@@ -1,0 +1,44 @@
+.leave-approval table,
+.employee-table table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.leave-approval th, .leave-approval td,
+.employee-table th, .employee-table td {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--gold);
+  text-align: left;
+}
+
+.leave-approval th,
+.employee-table th {
+  background-color: var(--gold-dark);
+  color: var(--black);
+}
+
+.approve-btn {
+  background-color: green;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  margin-right: 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.approve-btn:hover {
+  background-color: darkgreen;
+}
+
+.deny-btn {
+  background-color: red;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.deny-btn:hover {
+  background-color: darkred;
+}

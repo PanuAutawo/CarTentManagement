@@ -104,19 +104,31 @@ const InspectionCreatePage: React.FC = () => {
     }, []);
 
 
+    // --- vvvvv --- START: โค้ดที่แก้ไข --- vvvvv ---
     // Effect to filter booked times based on the selected date and current time
     useEffect(() => {
-        if (selectedDate && allAppointments.length > 1) {
+        if (selectedDate && allAppointments.length > 0) {
             const formattedDate = selectedDate.format('YYYY-MM-DD');
-            const bookedTimesForDate = allAppointments
+
+            // 1. Get all booked time slots for the selected date (including duplicates)
+            const allBookedTimesForDate = allAppointments
                 .filter(booking =>
                     dayjs(booking.date_time).format('YYYY-MM-DD') === formattedDate &&
                     booking.inspection_status !== 'ยกเลิก' &&
                     booking.ID !== Number(editingId)
                 )
                 .map(booking => dayjs.utc(booking.date_time).format('HH:mm'));
-            
-            // New logic to handle past times for the current day
+
+            // 2. Count the occurrences of each time slot
+            const timeSlotCounts = allBookedTimesForDate.reduce((acc, time) => {
+                acc[time] = (acc[time] || 0) + 1;
+                return acc;
+            }, {} as Record<string, number>);
+
+            // 3. Find time slots that are booked 3 or more times
+            const fullyBookedTimes = Object.keys(timeSlotCounts).filter(time => timeSlotCounts[time] >= 3);
+
+            // Logic to handle past times for the current day
             const now = dayjs();
             const isToday = selectedDate.isSame(now, 'day');
             
@@ -124,11 +136,9 @@ const InspectionCreatePage: React.FC = () => {
             if (isToday) {
                 const currentHour = now.hour();
                 
-                // If it's after 12:00 PM, all slots are past
                 if (currentHour >= 12) {
                     pastTimes = timeOptions;
                 } else {
-                    // If it's before 12:00 PM, only disable passed slots
                     pastTimes = timeOptions.filter(time => {
                         const timeSlotHour = parseInt(time.split(':')[0], 10);
                         return timeSlotHour <= currentHour;
@@ -136,7 +146,8 @@ const InspectionCreatePage: React.FC = () => {
                 }
             }
             
-            const unavailableTimes = [...new Set([...bookedTimesForDate, ...pastTimes])];
+            // 4. Combine fully booked times with past times
+            const unavailableTimes = [...new Set([...fullyBookedTimes, ...pastTimes])];
             setBookedTimes(unavailableTimes);
 
             // If the currently selected time becomes unavailable, clear it
@@ -145,6 +156,7 @@ const InspectionCreatePage: React.FC = () => {
             }
         }
     }, [selectedDate, allAppointments, editingId, selectedTime]);
+    // --- ^^^^^ --- END: จบส่วนที่แก้ไข --- ^^^^^ ---
 
     // Effect to fetch booking details for editing
     useEffect(() => {

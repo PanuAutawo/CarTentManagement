@@ -2,211 +2,226 @@ package controllers
 
 import (
 	"net/http"
-	"time"
+	"strconv"
 
-	"github.com/PanuAutawo/CarTentManagement/backend/configs"
+	//"time"
+	//"github.com/PanuAutawo/CarTentManagement/backend/configs"
 	"github.com/PanuAutawo/CarTentManagement/backend/entity"
+	"github.com/PanuAutawo/CarTentManagement/backend/middleware"
+	"github.com/PanuAutawo/CarTentManagement/backend/services"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
+
+	//"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
 type EmployeeController struct {
-	DB *gorm.DB
-}
-
-// Struct สำหรับ Response
-type EmployeeResponse struct {
-	ID           uint      `json:"id"`
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
-	ProfileImage string    `json:"profile_image"`
-	FirstName    string    `json:"first_name"`
-	LastName     string    `json:"last_name"`
-	Email        string    `json:"email"`
-	PhoneNumber  string    `json:"phone_number"`
-	Address      string    `json:"address"`
-	Birthday     time.Time `json:"birthday"`
-	Sex          string    `json:"sex"`
-	Position     string    `json:"position"`
-	JobType      time.Time `json:"job_type"`
+	svc *services.EmployeeService
 }
 
 func NewEmployeeController(db *gorm.DB) *EmployeeController {
-	return &EmployeeController{DB: db}
+	return &EmployeeController{svc: services.NewEmployeeService(db)}
 }
 
-// POST /employee/login
-func (e *EmployeeController) LoginEmployee(c *gin.Context) {
-	var loginInfo struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
-
-	if err := c.ShouldBindJSON(&loginInfo); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
-		return
-	}
-
-	var employee entity.Employee
-	if err := e.DB.Where("email = ?", loginInfo.Email).First(&employee).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
-		return
-	}
-
-	if err := bcrypt.CompareHashAndPassword([]byte(employee.Password), []byte(loginInfo.Password)); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
-		return
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id":   employee.ID,
-		"role": "employee",
-		"exp":  time.Now().Add(time.Hour * 24).Unix(),
-	})
-
-	tokenString, err := token.SignedString([]byte(configs.SECRET_KEY))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create token"})
-		return
-	}
-
-	response := EmployeeResponse{
-		ID:           employee.ID,
-		CreatedAt:    employee.CreatedAt,
-		UpdatedAt:    employee.UpdatedAt,
-		ProfileImage: employee.ProfileImage,
-		FirstName:    employee.FirstName,
-		LastName:     employee.LastName,
-		Email:        employee.Email,
-		PhoneNumber:  employee.PhoneNumber,
-		Address:      employee.Address,
-		Birthday:     employee.Birthday,
-		Sex:          employee.Sex,
-		Position:     employee.Position,
-		JobType:      employee.JobType,
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"message":  "Login successful",
-		"token":    tokenString,
-		"employee": response,
-	})
-}
-
-// GET /employees/me
-func (e *EmployeeController) GetCurrentEmployee(c *gin.Context) {
-	employeeID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authorized"})
-		return
-	}
-
-	var employee entity.Employee
-	if err := e.DB.First(&employee, employeeID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Employee not found"})
-		return
-	}
-
-	response := EmployeeResponse{
-		ID:           employee.ID,
-		CreatedAt:    employee.CreatedAt,
-		UpdatedAt:    employee.UpdatedAt,
-		ProfileImage: employee.ProfileImage,
-		FirstName:    employee.FirstName,
-		LastName:     employee.LastName,
-		Email:        employee.Email,
-		PhoneNumber:  employee.PhoneNumber,
-		Address:      employee.Address,
-		Birthday:     employee.Birthday,
-		Sex:          employee.Sex,
-		Position:     employee.Position,
-		JobType:      employee.JobType,
-	}
-	c.JSON(http.StatusOK, gin.H{"data": response})
-}
-
-// PUT /employees/me
-func (e *EmployeeController) UpdateCurrentEmployee(c *gin.Context) {
-	employeeID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authorized"})
-		return
-	}
-
-	var employee entity.Employee
-	if err := e.DB.First(&employee, employeeID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Employee not found"})
-		return
-	}
-
-	var updatedInfo struct {
-		ProfileImage string    `json:"profile_image"`
-		FirstName    string    `json:"first_name"`
-		LastName     string    `json:"last_name"`
-		PhoneNumber  string    `json:"phone_number"`
-		Address      string    `json:"address"`
-		Birthday     string    `json:"birthday"`
-		Sex          string    `json:"sex"`
-		Position     string    `json:"position"`
-		JobType      time.Time `json:"job_type"`
-	}
-
-	if err := c.ShouldBindJSON(&updatedInfo); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data: " + err.Error()})
-		return
-	}
-
-	employee.ProfileImage = updatedInfo.ProfileImage
-	employee.FirstName = updatedInfo.FirstName
-	employee.LastName = updatedInfo.LastName
-	employee.PhoneNumber = updatedInfo.PhoneNumber
-	employee.Address = updatedInfo.Address
-	employee.Sex = updatedInfo.Sex
-	employee.Position = updatedInfo.Position
-	employee.JobType = updatedInfo.JobType
-
-	if err := e.DB.Save(&employee).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update employee data"})
-		return
-	}
-
-	response := EmployeeResponse{
-		ID:           employee.ID,
-		CreatedAt:    employee.CreatedAt,
-		UpdatedAt:    employee.UpdatedAt,
-		ProfileImage: employee.ProfileImage,
-		FirstName:    employee.FirstName,
-		LastName:     employee.LastName,
-		Email:        employee.Email,
-		PhoneNumber:  employee.PhoneNumber,
-		Address:      employee.Address,
-		Birthday:     employee.Birthday,
-		Sex:          employee.Sex,
-		Position:     employee.Position,
-		JobType:      employee.JobType,
-	}
-	c.JSON(http.StatusOK, gin.H{"data": response})
-}
+// ===========================
+// 📌 Public Endpoints
+// ===========================
 
 // GET /employees
-func (e *EmployeeController) GetEmployees(c *gin.Context) {
-	var employees []entity.Employee
-	if err := e.DB.Find(&employees).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+func (ctl *EmployeeController) GetEmployees(c *gin.Context) {
+	items, err := ctl.svc.List()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch employees"})
 		return
 	}
-	c.JSON(http.StatusOK, employees)
+	c.JSON(http.StatusOK, items)
 }
 
 // GET /employees/:id
-func (e *EmployeeController) GetEmployeeByID(c *gin.Context) {
-	id := c.Param("id")
-	var employee entity.Employee
-	if err := e.DB.First(&employee, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Employee not found"})
+func (ctl *EmployeeController) GetEmployeeByID(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"data": employee})
+	item, err := ctl.svc.Get(uint(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "employee not found"})
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
+
+// ===========================
+// 📌 Auth
+// ===========================
+
+// POST /employee/login
+func (ctl *EmployeeController) LoginEmployee(c *gin.Context) {
+	var body struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil || body.Email == "" || body.Password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "email and password are required"})
+		return
+	}
+
+	emp, err := ctl.svc.GetByEmail(body.Email)
+	if err != nil || bcrypt.CompareHashAndPassword([]byte(emp.Password), []byte(body.Password)) != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
+		return
+	}
+
+	// ✅ ใช้ middleware.GenerateToken (employeeID + role)
+	tokenStr, err := middleware.GenerateToken(emp.EmployeeID, "employee")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to sign token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"token":    tokenStr,
+		"employee": emp,
+	})
+}
+
+// ===========================
+// 📌 Protected (Employee self)
+// ===========================
+
+// GET /employees/me
+func (ctl *EmployeeController) GetCurrentEmployee(c *gin.Context) {
+	val, ok := c.Get("employeeID")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	id, ok := val.(uint)
+	if !ok || id == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	item, err := ctl.svc.Get(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "employee not found"})
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
+
+// PUT /employees/me
+func (ctl *EmployeeController) UpdateCurrentEmployee(c *gin.Context) {
+	val, ok := c.Get("employeeID")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	id, ok := val.(uint)
+	if !ok || id == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	var emp entity.Employee
+	if err := c.ShouldBindJSON(&emp); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	updated, err := ctl.svc.Update(id, map[string]any{
+		"profile_image": emp.ProfileImage,
+		"first_name":    emp.FirstName,
+		"last_name":     emp.LastName,
+		"email":         emp.Email,
+		"phone":         emp.Phone,
+		"address":       emp.Address,
+		"sex":           emp.Sex,
+		"position":      emp.Position,
+		"job_type":      emp.JobType,
+		"total_sales":   emp.TotalSales,
+		"birthday":      emp.Birthday,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update profile", "detail": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, updated)
+}
+
+// ===========================
+// 📌 Manager actions (CRUD)
+// ===========================
+
+// POST /api/employees
+func (ctl *EmployeeController) CreateEmployee(c *gin.Context) {
+	var emp entity.Employee
+	if err := c.ShouldBindJSON(&emp); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// set default password if missing
+	if emp.Password == "" {
+		hash, _ := bcrypt.GenerateFromPassword([]byte("123456"), 10)
+		emp.Password = string(hash)
+	}
+
+	if err := ctl.svc.Create(&emp); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, emp)
+}
+
+// PUT /api/employees/:id
+func (ctl *EmployeeController) UpdateEmployeeByID(c *gin.Context) {
+	idStr := c.Param("id")
+	idInt, err := strconv.Atoi(idStr)
+	if err != nil || idInt <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	var emp entity.Employee
+	if err := c.ShouldBindJSON(&emp); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	updated, err := ctl.svc.Update(uint(idInt), map[string]any{
+		"profile_image": emp.ProfileImage,
+		"first_name":    emp.FirstName,
+		"last_name":     emp.LastName,
+		"email":         emp.Email,
+		"phone":         emp.Phone,
+		"address":       emp.Address,
+		"sex":           emp.Sex,
+		"position":      emp.Position,
+		"job_type":      emp.JobType,
+		"total_sales":   emp.TotalSales,
+		"birthday":      emp.Birthday,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update employee", "detail": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, updated)
+}
+
+// DELETE /api/employees/:id
+func (ctl *EmployeeController) DeleteEmployeeByID(c *gin.Context) {
+	idStr := c.Param("id")
+	idInt, err := strconv.Atoi(idStr)
+	if err != nil || idInt <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	if err := ctl.svc.Delete(uint(idInt)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete employee"})
+		return
+	}
+	c.Status(http.StatusNoContent)
 }

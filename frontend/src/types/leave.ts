@@ -1,9 +1,11 @@
-export type LeaveStatus = "pending" | "approved" | "denied";
-export type LeaveType = "ลาป่วย" | "ลากิจ" | "ลาพักร้อน";
+// src/types/leave.ts
+export type LeaveType = "sick" | "vacation" | "personal";
+
 export interface Leave {
-  LeaveID: string;
+  leaveID: number;
+  employeeID: number;   // ✅ จาก string → number
   startDate: string;
   endDate: string;
   type: LeaveType;
-  status: LeaveStatus;
+  status?: "pending" | "approved" | "denied";
 }

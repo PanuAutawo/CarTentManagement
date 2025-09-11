@@ -46,11 +46,18 @@ interface SubDistrict {
     SubDistrictName: string;
 }
 
+// --- vvvvv --- START: โค้ดที่แก้ไขส่วนที่ 1 --- vvvvv ---
+// เพิ่ม Employee เพื่อให้สามารถเช็ค ID ของพนักงานได้
 interface PickupDeliveryFromDB {
     ID: number;
     DateTime: string;
     Status: string;
+    Employee: {
+      ID: number;
+    };
 }
+// --- ^^^^^ --- END: จบส่วนที่แก้ไขส่วนที่ 1 --- ^^^^^ ---
+
 
 interface PickupDeliveryForEdit {
     ID: number;
@@ -207,9 +214,14 @@ const PickupCarCreatePage: React.FC = () => {
     }
   }, [user]);
 
+  // --- vvvvv --- START: โค้ดที่แก้ไขส่วนที่ 2 --- vvvvv ---
   useEffect(() => {
     const fetchBookedTimes = async () => {
-      if (!selectedDate) return;
+      // ถ้ายังไม่ได้เลือกวันหรือพนักงาน ให้ล้างค่าเวลาที่จองแล้ว และไม่ต้องทำอะไรต่อ
+      if (!selectedDate || !selectedEmployeeId) {
+        setBookedTimeSlots([]);
+        return;
+      }
 
       try {
         const response = await fetch('http://localhost:8080/pickup-deliveries');
@@ -219,10 +231,14 @@ const PickupCarCreatePage: React.FC = () => {
 
         const unavailableTimes = bookings
           .filter(booking => {
+            // ไม่ต้องเช็ครายการปัจจุบัน ในกรณีที่กำลังแก้ไข
             if (editingId && booking.ID.toString() === editingId) {
                 return false;
             }
-            return dayjs(booking.DateTime).isSame(selectedDate, 'day');
+            // เงื่อนไข: ต้องเป็นวันเดียวกัน และเป็นของพนักงานคนเดียวกัน
+            const isSameDay = dayjs(booking.DateTime).isSame(selectedDate, 'day');
+            const isSameEmployee = booking.Employee.ID === selectedEmployeeId;
+            return isSameDay && isSameEmployee;
           })
           .map(booking => dayjs(booking.DateTime).format('HH:mm'));
 
@@ -235,7 +251,8 @@ const PickupCarCreatePage: React.FC = () => {
     };
 
     fetchBookedTimes();
-  }, [selectedDate, editingId]);
+  }, [selectedDate, selectedEmployeeId, editingId]); // เพิ่ม selectedEmployeeId เพื่อให้ re-fetch เมื่อมีการเปลี่ยนพนักงาน
+  // --- ^^^^^ --- END: จบส่วนที่แก้ไขส่วนที่ 2 --- ^^^^^ ---
 
 
   useEffect(() => {
@@ -434,7 +451,6 @@ const PickupCarCreatePage: React.FC = () => {
                   {timeOptions.map((time, index) => {
                     const isBooked = bookedTimeSlots.includes(time);
                     
-                    // --- vvvvv --- START: โค้ดเงื่อนไขเวลาที่ถูกต้อง --- vvvvv ---
                     let isTimeDisabled = false;
                     const now = dayjs();
                     if (selectedDate && selectedDate.isSame(now, 'day')) {
@@ -449,7 +465,6 @@ const PickupCarCreatePage: React.FC = () => {
                       }
                     }
                     const isDisabled = isBooked || isTimeDisabled;
-                    // --- ^^^^^ --- END: จบส่วนที่ถูกต้อง --- ^^^^^ ---
 
                     return (
                       <Col xs={12} sm={8} md={6} key={index}>

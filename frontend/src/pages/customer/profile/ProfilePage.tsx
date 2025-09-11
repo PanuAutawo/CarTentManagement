@@ -4,10 +4,9 @@ import {
   Card, Avatar, Descriptions, Button, Row, Col, Typography, message,
   Form, Input, DatePicker, Spin, Divider
 } from 'antd';
-import { 
-  UserOutlined, EditOutlined, SaveOutlined, CloseCircleOutlined 
+import {
+  UserOutlined, EditOutlined, SaveOutlined, CloseCircleOutlined
 } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import locale from 'antd/es/date-picker/locale/th_TH';
 import 'dayjs/locale/th';
@@ -30,7 +29,6 @@ const CusProfilePage: React.FC = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [form] = Form.useForm();
-  const navigate = useNavigate();
   const { user, token, logout } = useAuth();
 
   useEffect(() => {
@@ -52,13 +50,14 @@ const CusProfilePage: React.FC = () => {
         }
 
         const data = await response.json();
+        // --- แก้ไขจุดที่ 1: จัดการ key ทั้ง Birthday และ birthday ---
         const mappedData: Customer = {
           ID: data.ID,
           FirstName: data.FirstName,
           LastName: data.LastName,
           Email: data.Email,
           Phone: data.Phone,
-          Birthday: data.Birthday,
+          Birthday: data.Birthday || data.birthday, // ใช้ค่าตัวใดตัวหนึ่งที่มีอยู่
         };
         setCustomerData(mappedData);
         form.setFieldsValue({
@@ -66,7 +65,7 @@ const CusProfilePage: React.FC = () => {
             lastName: mappedData.LastName,
             email: mappedData.Email,
             phone: mappedData.Phone,
-            birthday: dayjs(mappedData.Birthday),
+            birthday: mappedData.Birthday ? dayjs(mappedData.Birthday) : null,
         });
       } catch (error) {
         console.error("Error fetching customer data:", error);
@@ -92,7 +91,7 @@ const CusProfilePage: React.FC = () => {
             lastName: customerData.LastName,
             email: customerData.Email,
             phone: customerData.Phone,
-            birthday: dayjs(customerData.Birthday),
+            birthday: customerData.Birthday ? dayjs(customerData.Birthday) : null,
         });
     }
   };
@@ -113,7 +112,7 @@ const CusProfilePage: React.FC = () => {
           last_name: values.lastName,
           email: values.email,
           phone: values.phone,
-          birthday: values.birthday.format('YYYY-MM-DDTHH:mm:ssZ'),
+          birthday: values.birthday.format('YYYY-MM-DD')
         }),
       });
 
@@ -122,7 +121,18 @@ const CusProfilePage: React.FC = () => {
       }
 
       const updatedData = await response.json();
-      setCustomerData(updatedData);
+
+      // --- แก้ไขจุดที่ 2: จัดการ key ทั้ง Birthday และ birthday หลังการอัปเดต ---
+      const mappedUpdatedData: Customer = {
+        ID: updatedData.ID,
+        FirstName: updatedData.FirstName,
+        LastName: updatedData.LastName,
+        Email: updatedData.Email,
+        Phone: updatedData.Phone,
+        Birthday: updatedData.Birthday || updatedData.birthday, // ใช้ค่าตัวใดตัวหนึ่งที่มีอยู่
+      };
+      
+      setCustomerData(mappedUpdatedData);
       setIsEditMode(false);
       message.success('บันทึกข้อมูลสำเร็จ!');
     } catch (error) {
@@ -161,13 +171,6 @@ const CusProfilePage: React.FC = () => {
                       form={form}
                       layout="vertical"
                       onFinish={onFinish}
-                      initialValues={customerData ? {
-                        firstName: customerData.FirstName,
-                        lastName: customerData.LastName,
-                        email: customerData.Email,
-                        phone: customerData.Phone,
-                        birthday: dayjs(customerData.Birthday),
-                      } : {}}
                     >
                       <Form.Item name="firstName" label="ชื่อ" rules={[{ required: true, message: 'กรุณากรอกชื่อ' }]}>
                         <Input />
@@ -182,15 +185,17 @@ const CusProfilePage: React.FC = () => {
                         <Input />
                       </Form.Item>
                       <Form.Item name="birthday" label="วันเกิด">
-                        <DatePicker locale={locale} format="DD MMMM YYYY" style={{ width: '100%' }} />
+                        <DatePicker locale={locale} format="DD MMMM BBBB" style={{ width: '100%' }} />
                       </Form.Item>
                     </Form>
                   ) : (
                     <Descriptions bordered column={1} size="middle" labelStyle={{ fontWeight: 'bold' }}>
                       <Descriptions.Item label="ชื่อ-นามสกุล">{customerData?.FirstName} {customerData?.LastName}</Descriptions.Item>
                       <Descriptions.Item label="อีเมล">{customerData?.Email}</Descriptions.Item>
-                      <Descriptions.Item label="เบอร์โทรศัพท์">{customerData?.Phone}</Descriptions.Item>  
-                      <Descriptions.Item label="วันเกิด">{customerData?.Birthday ? dayjs(customerData.Birthday).locale('th').format('D MMMM YYYY') : 'N/A'}</Descriptions.Item>
+                      <Descriptions.Item label="เบอร์โทรศัพท์">{customerData?.Phone}</Descriptions.Item>
+                      <Descriptions.Item label="วันเกิด">
+                        {customerData?.Birthday ? dayjs(customerData.Birthday).locale('th').format('DD MMMM BBBB') : 'N/A'}
+                      </Descriptions.Item>
                     </Descriptions>
                   )}
                 </Col>
