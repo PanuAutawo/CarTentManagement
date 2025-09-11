@@ -20,7 +20,6 @@ const CarCard: React.FC<CarCardProps> = ({ car, type }) => {
   const images = car.pictures?.map((p) => `${p.path}`) || [];
 
   // ปุ่ม action แยกตาม type
-  // ...
   const renderActions = () => {
     switch (type) {
       case "sale":
@@ -53,24 +52,10 @@ const CarCard: React.FC<CarCardProps> = ({ car, type }) => {
             ขาย
           </Button>,
         ];
-      case "rentView":
-        return [
-          <Button key="detail" type="link" onClick={() => navigate(`/rentcar-details/${car.ID}`)}>
-            รายละเอียด
-          </Button>,
-        ];
-      case "saleView":
-        return [
-          <Button key="detail" type="link" onClick={() => navigate(`/buycar-details/${car.ID}`)}>
-            รายละเอียด
-          </Button>,
-        ];
       default:
         return [];
     }
   };
-  // ...
-
 
   return (
     <>
@@ -89,18 +74,12 @@ const CarCard: React.FC<CarCardProps> = ({ car, type }) => {
         }
         actions={renderActions()}
       >
-        <Title level={5}>
-          {car.carName} ปี {car.yearManufacture}
-        </Title>
+        <Title level={5}>{car.carName} ปี {car.yearManufacture}</Title>
         <Text>สภาพ: {car.condition}</Text>
         <br />
-
-        {/* กรณี sale (จัดการขาย) */}
         {type === "sale" && car.sale_list?.length && (
           <Text>ราคาขาย: {car.sale_list[0].sale_price.toLocaleString()} บาท</Text>
         )}
-
-        {/* กรณี rent (จัดการเช่า) */}
         {type === "rent" && car.rent_list?.length && (
           <>
             <Text>ราคาเช่า: {car.rent_list[0].rent_price.toLocaleString()} บาท/วัน</Text>
@@ -108,22 +87,7 @@ const CarCard: React.FC<CarCardProps> = ({ car, type }) => {
             <Text>เริ่มเช่า: {car.rent_list[0].rent_start_date}</Text>
           </>
         )}
-
-        {/* กรณี rentView (แสดงให้ผู้ใช้ดูรถที่ปล่อยเช่า) */}
-        {type === "rentView" && car.rent_list?.length && (
-          <>
-            <Text strong>ราคาเช่า: {car.rent_list[0].rent_price.toLocaleString()} บาท/วัน</Text>
-            <br />
-            <Text>เริ่มเช่า: {car.rent_list[0].rent_start_date}</Text>
-          </>
-        )}
-
-        {/* กรณี saleView (แสดงให้ผู้ใช้ดูรถที่ขาย) */}
-        {type === "saleView" && car.sale_list?.length && (
-          <Text strong>ราคาขาย: {car.sale_list[0].sale_price.toLocaleString()} บาท</Text>
-        )}
       </Card>
-
 
       <Modal open={isOpen} footer={null} onCancel={() => setIsOpen(false)} width={600}>
         <div style={{ position: "relative" }}>

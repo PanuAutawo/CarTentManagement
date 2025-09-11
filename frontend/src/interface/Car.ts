@@ -41,7 +41,7 @@ export interface Province {
 }
 
 // ---- Car Info ----
-export type CarType = 'sale' | 'rent' | 'noUse'| 'rentView'|'saleView';
+export type CarType = 'sale' | 'rent' | 'noUse';
 
 export interface CarInfo {
   ID: number;
